@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AssemblyGS Demo</title>
+<style>
+:root { --bg: #f4f4f2; --panel: #ffffff; --fg: #1d1d1f; --muted: #6b6b70; --line: #e0e0dc; --accent: #1971c2; --canvas: #ffffff; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #151517; --panel: #1e1e21; --fg: #e9e9ec; --muted: #9b9ba2; --line: #34343a; --accent: #4dabf7; --canvas: #1b1c1f; }
+}
+:root[data-theme="dark"] { --bg: #151517; --panel: #1e1e21; --fg: #e9e9ec; --muted: #9b9ba2; --line: #34343a; --accent: #4dabf7; --canvas: #1b1c1f; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+.wrap { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
+h1 { font-size: 20px; margin: 0 0 4px; }
+.sub { color: var(--muted); margin: 0 0 16px; font-size: 14px; }
+.viewer { position: relative; background: var(--canvas); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+#stage { width: 100%; aspect-ratio: 16 / 10; position: relative; touch-action: none; }
+#stage canvas { display: block; width: 100%; height: 100%; }
+#overlay { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 10px; align-items: center; justify-content: center;
+  color: var(--muted); font-size: 14px; background: var(--canvas); }
+#bar { width: min(280px, 60%); height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; }
+#bar > div { height: 100%; width: 0; background: var(--accent); transition: width .1s; }
+#step { position: absolute; left: 14px; top: 10px; font-size: 14px; pointer-events: none; }
+#stats { position: absolute; right: 12px; top: 10px; font: 12px/1.5 ui-monospace, monospace; color: var(--muted); text-align: right; pointer-events: none; }
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 10px 14px; border-top: 1px solid var(--line); background: var(--panel); }
+.controls select { font: inherit; font-size: 13px; background: transparent; color: var(--fg); border: 1px solid var(--line); border-radius: 6px; }
+.controls button { font: inherit; padding: 4px 14px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--fg); cursor: pointer; min-width: 84px; }
+#progress { flex: 1; min-width: 160px; accent-color: var(--accent); }
+.controls label { font-size: 13px; color: var(--muted); white-space: nowrap; cursor: pointer; }
+.hint { color: var(--muted); font-size: 12px; margin-top: 8px; }
+/* ?embed: the viewer alone, filling the frame the project page puts it in */
+.embed body { background: var(--canvas); }
+.embed .wrap { max-width: none; padding: 0; height: 100vh; }
+.embed h1, .embed .sub, .embed .hint { display: none; }
+.embed .viewer { border: 0; border-radius: 0; height: 100%; display: flex; flex-direction: column; }
+.embed #stage { flex: 1; aspect-ratio: auto; min-height: 0; }
+</style>
+<script>
+// ?embed: inside the project page, which is light only, so the viewer is too
+if (new URLSearchParams(location.search).has('embed')) {
+  document.documentElement.classList.add('embed');
+  document.documentElement.dataset.theme = 'light';
+}
+</script>
+<script type="importmap">
+{ "imports": {
+  "three": "./static/vendor/three/build/three.module.js",
+  "three/addons/": "./static/vendor/three/addons/",
+  "@sparkjsdev/spark": "./static/vendor/spark/spark.module.min.js" } }
+</script>
+</head>
+<body>
+<div class="wrap">
+  <h1>Interactive disassembly</h1>
+  <p class="sub" id="sub">Each part is represented by Gaussian splats reconstructed from calibrated multi-view images and moved along its recovered motion.</p>
+  <div class="viewer">
+    <div id="stage">
+      <div id="step"></div>
+      <div id="stats"></div>
+      <div id="overlay"><div id="msg">Loading renderer…</div><div id="bar"><div></div></div></div>
+    </div>
+    <div class="controls">
+      <button id="play">▶ Play</button>
+      <input id="progress" type="range" min="0" max="1" step="0.001" value="0" aria-label="Disassembly progress">
+      <label>Speed <select id="speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select></label>
+      <label><input id="spin" type="checkbox" checked> Auto-rotate</label>
+    </div>
+  </div>
+  <div class="hint">Drag to orbit · scroll or pinch to zoom · right-drag to pan · drag the slider to take the assembly apart.</div>
+</div>
+<script type="module">
+const t0 = performance.now();
+const $ = (id) => document.getElementById(id);
+const msg = (s) => { $('msg').textContent = s; };
+const params = new URLSearchParams(location.search);
+const ASM = params.get('a') || '21008m_a3fec63b';
+const DIR = `demo/${ASM}/`;
+
+let THREE, OrbitControls, SparkRenderer, SplatMesh, PackedSplats;
+try {
+  THREE = await import('three');
+  ({ OrbitControls } = await import('three/addons/controls/OrbitControls.js'));
+  ({ SparkRenderer, SplatMesh, PackedSplats } = await import('@sparkjsdev/spark'));
+} catch (e) { msg('Could not load the 3D renderer: ' + e.message); throw e; }
+const tLib = performance.now();
+
+const stage = $('stage');
+const renderer = new THREE.WebGLRenderer({ antialias: false });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+stage.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+const bg = () => new THREE.Color(getComputedStyle(document.documentElement).getPropertyValue('--canvas').trim());
+scene.background = bg();
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { scene.background = bg(); });
+scene.add(new SparkRenderer({ renderer }));
+const camera = new THREE.PerspectiveCamera(35, 1, 0.001, 50);
+camera.up.set(0, 0, 1);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.autoRotateSpeed = 0.8;
+
+function resize() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stage);
+
+// the removal path: translation s along d, turning about the axis through p while threaded; a hinge turns by s
+function delta(m, s) {
+  const d = new THREE.Vector3(...m.direction).normalize();
+  const p = new THREE.Vector3(...m.point);
+  const about = (angle) => new THREE.Matrix4().makeTranslation(p.x, p.y, p.z)
+    .multiply(new THREE.Matrix4().makeRotationAxis(d, angle))
+    .multiply(new THREE.Matrix4().makeTranslation(-p.x, -p.y, -p.z));
+  if (m.kind === 'revolute') return about(s);
+  const M = new THREE.Matrix4().makeTranslation(d.x * s, d.y * s, d.z * s);
+  if (m.kind === 'screw' && m.pitch) M.multiply(about(2 * Math.PI * Math.min(s, m.engaged) / m.pitch));
+  return M;
+}
+const M4 = (a) => new THREE.Matrix4().set(...a.flat());
+
+// download with a progress bar: every model file, summed
+async function fetchAll(urls) {
+  const got = new Array(urls.length).fill(0), total = new Array(urls.length).fill(0);
+  const show = () => {
+    const g = got.reduce((a, b) => a + b, 0), t = total.reduce((a, b) => a + b, 0);
+    $('bar').firstElementChild.style.width = t ? `${100 * g / t}%` : '0';
+    msg(`Loading splats… ${(g / 1e6).toFixed(1)}${t ? ' / ' + (t / 1e6).toFixed(1) : ''} MB`);
+  };
+  return Promise.all(urls.map(async (u, i) => {
+    const r = await fetch(u);
+    if (!r.ok) throw new Error(`${u}: ${r.status}`);
+    total[i] = +r.headers.get('content-length') || 0;
+    const reader = r.body.getReader(), chunks = [];
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value); got[i] += value.length; show();
+    }
+    const buf = new Uint8Array(got[i]);
+    let o = 0; for (const c of chunks) { buf.set(c, o); o += c.length; }
+    return buf;
+  }));
+}
+
+let S, objs = [], bytes = 0;
+try {
+  msg('Loading scene…');
+  S = await (await fetch(DIR + 'scene.json')).json();
+  const keys = Object.keys(S.models);
+  const files = await fetchAll(keys.map(k => `${DIR}${k}.splat`));
+  bytes = files.reduce((a, f) => a + f.length, 0);
+  msg('Preparing…');
+  const packed = {};
+  await Promise.all(keys.map(async (k, i) => {
+    packed[k] = new PackedSplats({ fileBytes: files[i], fileType: 'splat' });
+    await packed[k].initialized;
+  }));
+  const W = M4(S.world_from_A);
+  for (const p of S.parts) {
+    if (p.same_as) continue;                      // a later step of a part already drawn
+    const mesh = new SplatMesh({ packedSplats: packed[p.model] });
+    mesh.matrixAutoUpdate = false;
+    scene.add(mesh);
+    objs.push({ part: p, mesh, W });
+  }
+} catch (e) { msg('Could not load the scene: ' + e.message); throw e; }
+const tData = performance.now();
+
+// the timeline, in seconds at 1x: parts come off in reverse clip order, each taking as long as its
+// motion needs -- a screw turns at most TURN_RATE turns a second (faster and it strobes), a slide or
+// the unthreaded rest moves at SLIDE_RATE, a hinge opens at HINGE_RATE
+const TURN_RATE = 2, SLIDE_RATE = 0.03, HINGE_RATE = Math.PI / 2, MIN_STEP = 0.8, GAP = 0.25;
+const PEAK = 1.5;            // smoothstep's top speed over its mean: the limits above hold at the peak
+function duration(m) {
+  if (m.kind === 'revolute') return m.travel / HINGE_RATE;
+  const turns = m.kind === 'screw' && m.pitch ? Math.min(m.travel, m.engaged) / Math.abs(m.pitch) : 0;
+  const free = m.kind === 'screw' ? Math.max(m.travel - m.engaged, 0) : m.travel;
+  return turns / TURN_RATE + free / SLIDE_RATE;
+}
+const order = S.parts.filter(p => p.clip !== null).sort((a, b) => b.clip - a.clip);
+const span = {};
+let T = 0;
+for (const p of order) {
+  const d = Math.max(MIN_STEP, PEAK * duration(p.motion));
+  span[p.id] = [T, d];
+  T += d + GAP;
+}
+T -= GAP;
+$('progress').max = T;
+// Durations are fractional; allow the slider to reach the exact end of every assembly.
+$('progress').step = 'any';
+const n = T;
+const pretty = (name) => name.replace(/:\d+$/, '');
+const verb = { translate: 'Sliding out', screw: 'Unscrewing', revolute: 'Opening' };
+// the steps of a part: its own and those of later clips that move it again, latest first
+const stepsOf = (o) => [o.part, ...S.parts.filter(q => q.same_as === o.part.id)].sort((a, b) => b.clip - a.clip);
+
+// progress u in seconds along the timeline; each step eased in and out
+const ease = (x) => x * x * (3 - 2 * x);
+function pose() {
+  const u = +$('progress').value;
+  const f = (p) => p.clip === null ? 0 : ease(Math.min(Math.max((u - span[p.id][0]) / span[p.id][1], 0), 1));
+  let active = null;
+  for (const o of objs) {
+    const steps = stepsOf(o);
+    const p = steps.find(q => f(q) < 1) || steps[steps.length - 1];
+    const x = f(p);
+    if (x > 0 && x < 1) active = p;
+    const D = p.motion ? delta(p.motion, x * p.motion.travel) : new THREE.Matrix4();
+    o.mesh.matrix.copy(o.W).multiply(D).multiply(M4(p.seated));
+    o.mesh.matrixWorldNeedsUpdate = true;
+  }
+  $('step').textContent = active ? `${verb[active.motion.kind] || 'Removing'} · step ${order.indexOf(active) + 1} of ${order.length}`
+    : u >= n - 1e-3 ? 'Disassembled' : u <= 1e-3 ? 'Assembled' : '';
+}
+
+// the assembled object's centre and extent: from scene.json (export_web.py's framing(), which the preview
+// image uses too), else each part at its last step's seated pose
+function frame() {
+  if (S.frame) {                 // export_web.py: from the gaussians themselves, floaters left out
+    const c = new THREE.Vector3(...S.frame.target), s = S.frame.extent;
+    controls.target.copy(c);
+    camera.position.copy(c).add(new THREE.Vector3(0.9, -1.3, 0.8).normalize().multiplyScalar(s * S.frame.distance));
+    camera.near = s / 200; camera.far = s * 50; camera.updateProjectionMatrix();
+    return;
+  }
+  const W = M4(S.world_from_A);
+  const box = new THREE.Box3();
+  for (const o of objs) {
+    const last = stepsOf(o)[0];
+    const m = S.models[o.part.model];
+    const c = new THREE.Vector3(...m.centre).applyMatrix4(W.clone().multiply(M4(last.seated)));
+    box.expandByPoint(c.clone().addScalar(-m.size / 2)).expandByPoint(c.clone().addScalar(m.size / 2));
+  }
+  const c = box.getCenter(new THREE.Vector3()), s = box.getSize(new THREE.Vector3()).length();
+  controls.target.copy(c);
+  camera.position.copy(c).add(new THREE.Vector3(0.9, -1.3, 0.8).normalize().multiplyScalar(s * 2.0));
+  camera.near = s / 200; camera.far = s * 50; camera.updateProjectionMatrix();
+}
+
+frame(); pose(); resize();
+$('overlay').style.display = 'none';
+const gauss = Object.values(S.models).reduce((a, m) => a + m.gaussians, 0);
+
+let playing = false;
+const setPlay = (on) => { playing = on; $('play').textContent = on ? '⏸ Pause' : '▶ Play'; };
+$('play').onclick = () => {
+  if (!playing && +$('progress').value >= n - 1e-3) $('progress').value = 0;
+  setPlay(!playing);
+};
+$('progress').oninput = () => { setPlay(false); pose(); };
+$('spin').onchange = () => { controls.autoRotate = $('spin').checked; };
+controls.autoRotate = $('spin').checked;
+controls.addEventListener('start', () => { $('spin').checked = false; controls.autoRotate = false; });
+
+// stats: shown with ?stats (load times, size, frame rate) -- for checking, not for the final page
+const showStats = params.has('stats');
+let last = performance.now(), frames = 0, fpsT = last, fps = 0;
+renderer.setAnimationLoop((now) => {
+  const dt = Math.min((now - last) / 1000, 0.1); last = now;
+  if (playing) {
+    const v = +$('progress').value + dt * +$('speed').value;
+    $('progress').value = Math.min(v, n);
+    if (v >= n) setPlay(false);
+    pose();
+  }
+  controls.update();
+  renderer.render(scene, camera);
+  frames++;
+  if (now - fpsT > 500) {
+    fps = frames * 1000 / (now - fpsT); frames = 0; fpsT = now;
+    if (showStats) $('stats').innerHTML =
+      `${fps.toFixed(0)} fps · ${renderer.domElement.width}×${renderer.domElement.height}<br>` +
+      `${(gauss / 1e3).toFixed(0)}k gaussians · ${(bytes / 1e6).toFixed(2)} MB<br>` +
+      `renderer ${((tLib - t0) / 1000).toFixed(2)} s · splats ${((tData - tLib) / 1000).toFixed(2)} s`;
+  }
+});
+</script>
+</body>
+</html>

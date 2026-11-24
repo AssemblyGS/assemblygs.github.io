@@ -1,0 +1,30 @@
+{
+ "title": "Remote control",
+ "orbit": "orbit.mp4",
+ "steps": [
+  {
+   "caption": "Insert the first battery",
+   "keys": [
+    "key_0_0.jpg",
+    "key_0_1.jpg",
+    "key_0_2.jpg"
+   ]
+  },
+  {
+   "caption": "Insert the second battery",
+   "keys": [
+    "key_1_0.jpg",
+    "key_1_1.jpg",
+    "key_1_2.jpg"
+   ]
+  },
+  {
+   "caption": "Slide the battery cover on",
+   "keys": [
+    "key_2_0.jpg",
+    "key_2_1.jpg",
+    "key_2_2.jpg"
+   ]
+  }
+ ]
+}

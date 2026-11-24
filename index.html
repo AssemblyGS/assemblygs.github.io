@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="description" content="AssemblyGS: Reconstructing High-Fidelity 3D Part Assemblies via Gaussian Splatting">
+  <meta name="keywords" content="Part Assembly, Gaussian Splatting, Gaussian Assembly Tree, Assembly Motion, Demonstration Video">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AssemblyGS: Reconstructing High-Fidelity 3D Part Assemblies via Gaussian Splatting</title>
+
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/academicons/1.9.4/css/academicons.min.css">
+  <!-- TODO: favicon -->
+
+  <style>
+    body { font-family: 'Noto Sans', sans-serif; }
+    .publication-title, .publication-authors, .title { font-family: 'Google Sans', 'Noto Sans', sans-serif; }
+    .publication-authors a { color: hsl(204, 86%, 53%) !important; }
+    .publication-authors a:hover { text-decoration: underline; }
+    .author-block { display: inline-block; }
+    .brand { color: rgb(0, 162, 255); }
+    .link-block a { margin-top: 5px; margin-bottom: 5px; }
+
+    .section { padding-top: 1.5rem; padding-bottom: 1.5rem; }
+    .section .title.is-3 { margin-bottom: 1.25rem; }
+    .content.has-text-justified p { hyphens: auto; }
+
+    .project-video-wrapper { overflow: hidden; width: 100%; background: #000; border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(10, 10, 10, 0.12); line-height: 0; }
+    .project-video-wrapper video { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: contain; }
+
+    /* anything not made yet */
+    .placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .25rem;
+      background: #f5f5f5; border: 2px dashed #c8c8c8; border-radius: 12px; color: #7a7a7a; padding: 1rem; text-align: center; line-height: 1.5; }
+    .placeholder strong { color: #4a4a4a; }
+    .placeholder .icon { font-size: 1.6rem; color: #b5b5b5; margin-bottom: .25rem; }
+    .ratio-16x9 { aspect-ratio: 16 / 9; }
+    .ratio-21x9 { aspect-ratio: 21 / 9; }
+
+    .figure-img { width: 100%; height: auto; }
+    .figure-block { margin-top: 1.5rem; }
+    /* dataset */
+    .dataset-stats { margin: .25rem 0 1.5rem !important; }
+    .dataset-stats .heading { color: #7a7a7a; }
+    .dataset-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: .75rem; text-align: left; }
+    .ds-card { position: relative; background: #fff; border: 1px solid #ededed; border-radius: 10px; overflow: hidden;
+      transition: box-shadow .2s, transform .2s; }
+    .ds-card:hover { box-shadow: 0 8px 22px rgba(10, 10, 10, .1); transform: translateY(-2px); }
+    .ds-card .thumb { aspect-ratio: 1 / 1; background: #f7f7f5; display: grid; place-items: center; padding: .6rem; }
+    .ds-card .thumb img { max-width: 100%; max-height: 100%; object-fit: contain; }
+    .ds-card .body { padding: .45rem .6rem .55rem; }
+    .ds-card .name { font-weight: 600; font-size: .9rem; color: #363636; line-height: 1.3; }
+    .ds-card .meta { font-size: .75rem; color: #7a7a7a; margin-top: .1rem; }
+    .ds-card .kinds { display: flex; gap: .25rem; margin-top: .3rem; flex-wrap: wrap; }
+    .ds-card .kinds span { font-size: .68rem; border-radius: 999px; padding: 0 .45rem; line-height: 1.5; }
+    .k-t { background: #eef6fc; color: #1d72aa; } .k-s { background: #fffaeb; color: #946c00; } .k-r { background: #effaf5; color: #257953; }
+    .ds-card .badge3d { position: absolute; top: .45rem; right: .45rem; cursor: pointer; }
+    @media (max-width: 1023px) { .dataset-grid { grid-template-columns: repeat(4, 1fr); } }
+    @media (max-width: 768px) { .dataset-grid { grid-template-columns: repeat(2, 1fr); } }
+
+    /* interactive viewer */
+    .viewer-frame { width: 100%; aspect-ratio: 16 / 11; border-radius: 12px; overflow: hidden; background: #fff;
+      box-shadow: 0 10px 30px rgba(10, 10, 10, 0.12); border: 1px solid #ededed; }
+    .viewer-frame iframe { width: 100%; height: 100%; border: 0; display: block; }
+    /* before loading: the object as the viewer will open on it (scripts/export_web.py's preview.jpg) */
+    .viewer-start { position: relative; width: 100%; height: 100%; border: 0; padding: 0; cursor: pointer; font-family: inherit;
+      background: #fff center / cover no-repeat; display: block; }
+    .viewer-start .veil { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: .6rem; background: rgba(255, 255, 255, 0); transition: background .2s; }
+    .viewer-start:hover .veil { background: rgba(255, 255, 255, .25); }
+    .viewer-start .play { width: 72px; height: 72px; border-radius: 50%; background: rgba(54, 54, 54, .85); color: #fff;
+      display: grid; place-items: center; font-size: 1.5rem; padding-left: 5px; box-shadow: 0 6px 20px rgba(0, 0, 0, .2); transition: background .2s, transform .2s; }
+    .viewer-start:hover .play { background: rgb(0, 162, 255); transform: scale(1.06); }
+    .viewer-start .label { background: rgba(255, 255, 255, .9); color: #363636; border-radius: 999px; padding: .3rem .9rem;
+      font-size: .95rem; font-weight: 600; box-shadow: 0 2px 10px rgba(0, 0, 0, .08); }
+    .viewer-start .label small { font-weight: 400; color: #7a7a7a; margin-left: .35rem; }
+
+    .sub-title { margin-top: 1.75rem !important; margin-bottom: 1rem !important; color: #4a4a4a; }
+    .real-tabs { margin-bottom: 1rem !important; }
+    .real-tabs a { cursor: pointer; }
+    .real-sample { text-align: left; align-items: stretch; }
+    .pane-label { font-size: .8rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: #7a7a7a; margin-bottom: .5rem; }
+    .key-step { margin-bottom: .6rem; }
+    .key-step .cap { font-size: .9rem; margin-bottom: .25rem; color: #363636; }
+    .key-step .cap b { display: inline-grid; place-items: center; width: 1.35rem; height: 1.35rem; border-radius: 50%;
+      background: #363636; color: #fff; font-size: .75rem; margin-right: .4rem; }
+    .key-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+    .key-row img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 4px; display: block; }
+    .key-row img + img { position: relative; }
+    .orbit-wrap { border-radius: 10px; overflow: hidden; border: 1px solid #ededed; background: #fff; line-height: 0; }
+    .orbit-wrap video { width: 100%; aspect-ratio: 4 / 3; object-fit: contain; display: block; }
+    .orbit-wrap video[hidden] { display: none; }
+
+    /* results table */
+    .table-container { margin-top: .5rem; }
+    .table { font-size: .85rem; margin: 0 auto; }
+    .table th, .table td { text-align: center !important; vertical-align: middle; white-space: nowrap; }
+    .table td:first-child, .table th:first-child { text-align: left !important; }
+    .table tr.ours td { background: #eef7ff; font-weight: 600; }
+    .table-hint, .figure-hint { display: none; }
+
+    pre.bibtex { background: #f5f5f5; border-radius: 8px; font-size: .85rem; white-space: pre; overflow-x: auto; }
+
+    @media (max-width: 768px) {
+      .hero-body { padding: 1.5rem 1rem; }
+      .publication-title.title.is-1 { font-size: clamp(1.75rem, 7.5vw, 2.25rem); line-height: 1.15; }
+      .publication-title .brand { white-space: nowrap; }
+      .content.has-text-justified { text-align: left !important; }
+      .real-tabs ul { width: 100%; min-width: 0; flex-shrink: 1; flex-wrap: wrap; gap: .4rem; }
+      .real-tabs.is-toggle li + li { margin-left: 0; }
+      .real-tabs.is-toggle li a { border-radius: 999px !important; }
+      .table-hint, .figure-hint { display: block; color: #7a7a7a; font-size: .8rem; margin-bottom: .6rem; }
+      .viewer-start .label { display: flex; flex-direction: column; align-items: center; max-width: calc(100% - 1rem); }
+      .viewer-start .label small { margin-left: 0; }
+      .viewer-frame { aspect-ratio: 3 / 4; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ============ Header ============ -->
+<section class="hero">
+  <div class="hero-body">
+    <div class="container is-max-widescreen">
+      <div class="columns is-centered">
+        <div class="column has-text-centered">
+          <h1 class="title is-1 publication-title"><span class="brand">AssemblyGS</span>: Reconstructing High-Fidelity 3D Part Assemblies via Gaussian Splatting</h1>
+
+          <!-- Author names retained from the project page; the current manuscript is anonymous. -->
+          <div class="is-size-5 publication-authors">
+            <span class="author-block"><a href="#">Wenhao Li</a><sup>1</sup>,</span>
+            <span class="author-block"><a href="#">Zixuan Chen</a><sup>1</sup>,</span>
+            <span class="author-block"><a href="#">Jianhuang Lai</a><sup>1</sup>,</span>
+            <span class="author-block"><a href="#">Xiaohua Xie</a><sup>1</sup></span>
+          </div>
+          <div class="is-size-5 publication-authors">
+            <span class="author-block"><sup>1</sup>SUN YAT-SEN UNIVERSITY</span>
+          </div>
+
+          <div class="column has-text-centered">
+            <div class="publication-links">
+              <span class="link-block"><a href="static/pdf/assemblygs.pdf" target="_blank" rel="noopener" class="external-link button is-normal is-rounded is-dark">
+                <span class="icon"><i class="fas fa-file-pdf"></i></span><span>Paper</span></a></span>
+              <span class="link-block"><a href="#project-video" class="external-link button is-normal is-rounded is-dark">
+                <span class="icon"><i class="fas fa-play"></i></span><span>Video</span></a></span>
+              <span class="link-block"><a href="#interactive" class="external-link button is-normal is-rounded is-dark">
+                <span class="icon"><i class="fas fa-cube"></i></span><span>Interactive Demo</span></a></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ Project video ============ -->
+<section class="section" id="project-video">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-full-width">
+        <div class="project-video-wrapper">
+          <video controls playsinline preload="none" poster="static/video/assemblygs-poster.jpg" aria-label="AssemblyGS project video">
+            <source src="static/video/assemblygs.mp4" type="video/mp4">
+            Your browser does not support embedded video. <a href="static/video/assemblygs.mp4">Download the project video</a>.
+          </video>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ Abstract ============ -->
+<section class="section">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-full-width">
+        <h3 class="title is-3">Abstract</h3>
+        <div class="content has-text-justified" id="abstract-text">
+          <p>
+            3D part assembly aims to arrange and connect individual components into functional objects by determining their
+            spatial configurations and assembly relationships. However, existing methods primarily focus on geometric
+            reasoning and assembly feasibility. They often rely on predefined CAD models or point clouds and do not directly
+            target high-fidelity 3D assembly reconstruction for immersive visualization and interactive applications.
+          </p>
+          <p>
+            In this paper, we propose <strong>AssemblyGS</strong>, the first framework for reconstructing high-fidelity 3D part
+            assemblies from assembly demonstration videos using 3D Gaussian Splatting. Specifically, we introduce a
+            <strong>Gaussian Assembly Tree (GAT)</strong> that unifies part-level Gaussian representations, relative assembly
+            poses, and motion parameters within a hierarchical structure. For each assembly step, we estimate the relative
+            pose between the moving and reference units through occlusion-aware pose tracking, followed by parameterized
+            motion estimation and joint refinement of the assembled pose and motion under a kinematic model. Finally, we
+            integrate the recovered assembly poses and motions to complete the GAT, with its root representing the complete
+            assembled object.
+          </p>
+          <p>
+            Experiments on synthetic and real-world data show that AssemblyGS achieves high-quality 3D reconstruction and
+            accurate recovery of assembly poses and motions, enabling 3D part assembly and disassembly.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ Teaser ============ -->
+<section class="section" style="padding-top:0">
+  <div class="container is-max-desktop">
+    <a href="static/img/teaser.jpg" target="_blank" rel="noopener" aria-label="Open the AssemblyGS overview at full size"><img class="figure-img" src="static/img/teaser.jpg" alt="AssemblyGS reconstructs a stapler from Gaussian parts and an assembly demonstration, enabling assembly, disassembly, novel views and part-level motion"></a>
+    <p class="figure-hint">Tap a figure to view it at full size.</p>
+    <div class="content has-text-justified" style="margin-top:.75rem">
+      <p><strong>Figure 1. AssemblyGS overview.</strong> Given Gaussian parts reconstructed from multi-view images and
+        an assembly demonstration video, <strong>AssemblyGS</strong> progressively recovers assembly poses and motions
+        to build a complete 3D object. The reconstruction supports assembly and disassembly, novel-view synthesis,
+        and part-level motion.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ Method ============ -->
+<section class="section">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-full-width">
+        <h3 class="title is-3">Method</h3>
+        <a href="static/img/pipeline.png" target="_blank" rel="noopener" aria-label="Open the method diagram at full size"><img class="figure-img" src="static/img/pipeline.png" alt="AssemblyGS pipeline: Gaussian Assembly Tree, assembly pose estimation and assembly motion estimation" loading="lazy"></a>
+        <div class="content has-text-justified" style="margin-top:.75rem">
+          <p>
+            <strong>Figure 2. Overview of AssemblyGS.</strong>
+            (a) A <strong>Gaussian Assembly Tree (GAT)</strong> unifies part-level Gaussian representations, relative assembly
+            poses, and motion parameters, with its root representing the complete assembled object.
+            (b) <strong>Assembly pose estimation</strong> identifies the moving part using AllTracker and SAM2, then estimates
+            its initial 6-DoF pose trajectory and final assembled pose through part matching and occlusion-aware tracking.
+            (c) <strong>Assembly motion estimation</strong> selects a translation, revolute or screw motion from the recovered
+            trajectory and jointly refines the assembled pose and motion. These estimates complete the tree for 3D assembly
+            and disassembly.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ Dataset ============ -->
+<section class="section" id="dataset">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-full-width">
+        <h3 class="title is-3">Assembly-20 Dataset</h3>
+        <nav class="level dataset-stats">
+          <div class="level-item"><div><p class="heading">Assemblies</p><p class="title is-4">20</p></div></div>
+          <div class="level-item"><div><p class="heading">Standard assembly operations</p><p class="title is-4">132</p></div></div>
+          <div class="level-item"><div><p class="heading">Additional interactions</p><p class="title is-4">3</p></div></div>
+          <div class="level-item"><div><p class="heading">Translation / Screw / Revolute</p><p class="title is-4">104 / 25 / 3</p></div></div>
+        </nav>
+        <div class="dataset-grid" id="dataset-grid"></div>
+        <div class="content has-text-justified" style="margin-top:.75rem">
+          <p><strong>Figure 3. The Assembly-20 benchmark</strong>, each object shown assembled at its ground-truth poses.
+            Twenty assemblies from the Fusion 360 Gallery Assembly Dataset span mechanical, industrial, and everyday objects.
+            Each comes with Gaussian representations of its individual parts, RGB-D assembly demonstration videos captured
+            from a fixed camera, and ground-truth assembled poses and motion parameters. The benchmark contains 132 standard
+            assembly operations (104 translations, 25 screw motions, and 3 revolute motions), plus 3 additional translational
+            interactions after assembly. Gallery operation counts include these additional interactions.
+            <span class="tag is-info is-light">3D</span> marks objects you can take apart in the
+            <a href="#interactive">interactive demo</a>.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ Interactive demo ============ -->
+<section class="section" id="interactive">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-full-width">
+        <h3 class="title is-3">Interactive Demo</h3>
+        <div class="field is-grouped is-grouped-centered" style="margin-bottom:1.25rem">
+          <div class="control">
+            <div class="select is-info">
+              <select id="asm-select">
+                <!-- scripts/export_web.py <assembly> <run>; data-mb: splats + the renderer, what the reader downloads -->
+                <option value="stapler2m_f4a5e858" data-mb="11">Stapler (6 steps)</option>
+                <option value="grinderm_ecff3b26" data-mb="26">Coffee grinder (15 steps)</option>
+                <option value="lighterm_32294179" data-mb="11">Lighter (5 steps)</option>
+                <option value="21008m_a3fec63b" data-mb="10">Bike stem (7 steps)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="viewer-frame" id="frame">
+          <button class="viewer-start" id="start" aria-label="Load the interactive viewer">
+            <span class="veil">
+              <span class="play"><i class="fas fa-play"></i></span>
+              <span class="label">Click to interact<small id="start-mb">about 10 MB · WebGL 2</small></span>
+            </span>
+          </button>
+        </div>
+        <div class="content has-text-justified" style="margin-top:.75rem">
+          <p>
+            <strong>Interactive disassembly.</strong> Each part is represented by Gaussian splats reconstructed from calibrated
+            multi-view images. Parts are removed in reverse demonstration order along the motions AssemblyGS recovered.
+            Drag to orbit, scroll to zoom, and drag the slider to take the assembly apart.
+            Rendered in the browser with <a href="https://sparkjs.dev/" target="_blank" rel="noopener">Spark</a>.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ Qualitative results ============ -->
+<section class="section">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-full-width">
+        <h3 class="title is-3">Results</h3>
+
+        <h4 class="title is-5 sub-title">Real-world demonstrations</h4>
+        <div class="tabs is-toggle is-toggle-rounded is-centered is-small real-tabs"><ul id="real-tabs"></ul></div>
+        <p id="real-status" class="has-text-grey" role="status" aria-live="polite" hidden></p>
+        <div class="columns real-sample" id="real-sample" aria-busy="false">
+          <div class="column is-6">
+            <p class="pane-label">Input · key frames</p>
+            <div id="real-keys"></div>
+          </div>
+          <div class="column is-6">
+            <p class="pane-label">Reconstruction · orbiting camera</p>
+            <div class="orbit-wrap"><video id="real-orbit" muted loop playsinline autoplay preload="auto"></video></div>
+          </div>
+        </div>
+        <div class="content has-text-justified">
+          <p><strong>Real-world demonstrations.</strong> An earbud case, an event camera, a remote control, and a toy train.
+            Individual parts are reconstructed from calibrated multi-view images, and assembly demonstrations are recorded
+            with a fixed Intel RealSense D435i. Depth maps are estimated from infrared stereo pairs using FoundationStereo
+            and aligned with the RGB images; camera poses are calibrated with a ChArUco board.
+            Left: key frames of each assembly stage. Right: the reconstructed parts following the recovered motions,
+            viewed from an orbiting camera.</p>
+        </div>
+
+        <h4 class="title is-5 sub-title">Comparison with baselines</h4>
+        <p class="table-hint" id="table-scroll-hint">Swipe left or right to see all metrics.</p>
+        <div class="table-container" tabindex="0" role="region" aria-label="Baseline comparison table" aria-describedby="table-scroll-hint">
+          <!-- Table 1 from the November 17 manuscript, matching the updated figures. -->
+          <table class="table is-narrow is-hoverable" aria-describedby="comparison-caption">
+            <thead>
+              <tr><th rowspan="2" scope="col">Method</th>
+                <th colspan="3" scope="colgroup">Assembly Pose</th>
+                <th colspan="4" scope="colgroup">Assembly Motion</th>
+                <th colspan="3" scope="colgroup">Reconstruction Quality</th></tr>
+              <tr><th scope="col">ADD-S↓</th><th scope="col">PA↑</th><th scope="col">SR↑</th>
+                <th scope="col">Type Acc.↑</th><th scope="col">Axis Ang.↓</th><th scope="col">Axis Pos.↓</th><th scope="col">Motion Err.↓</th>
+                <th scope="col">PSNR↑</th><th scope="col">SSIM↑</th><th scope="col">LPIPS↓</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>RPF</td><td>3.247</td><td>57.65</td><td>20</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+              <tr><td>AssemblyDyno</td><td>11.166</td><td>20.51</td><td>5</td><td>77.27</td><td>–</td><td>–</td><td>20.853 / 3.331</td><td>–</td><td>–</td><td>–</td></tr>
+              <tr><td>AssemblyGS (Ours) + FoundationPose</td><td>6.987</td><td>88.90</td><td>50</td><td>97.04</td><td>6.100</td><td>2.030</td><td>17.847 / 1.435</td><td>28.13</td><td>0.9701</td><td>0.03408</td></tr>
+              <tr class="ours"><td>AssemblyGS (Ours)</td><td>0.812</td><td>97.04</td><td>90</td><td>99.26</td><td>0.197</td><td>0.760</td><td>1.841 / 0.172</td><td>30.07</td><td>0.9774</td><td>0.02724</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="content has-text-justified" style="margin-top:.75rem">
+          <p id="comparison-caption"><strong>Table 1. Quantitative comparison on the synthetic Assembly-20 benchmark.</strong>
+            We evaluate assembly pose accuracy, assembly motion accuracy, and reconstruction quality.
+            ADD-S reports pose error in millimetres; PA is the percentage of correctly assembled parts
+            (ADD-S below 5% of the part diameter), and SR is the percentage of fully correct assemblies.
+            Type Acc. measures motion type accuracy; Axis Ang. is the direction error in degrees, and Axis Pos. is the
+            rotational-axis position error as a percentage of the part diameter.
+            Motion Err. reports rotation error (degrees) / translation error (centimetres).
+            PSNR, SSIM and LPIPS measure novel-view reconstruction quality. Bold values indicate the best performance;
+            ↑ means higher is better, ↓ means lower is better, and – indicates an unavailable metric.</p>
+        </div>
+
+        <div class="figure-block">
+          <a href="static/img/qualitative.jpg" target="_blank" rel="noopener" aria-label="Open the baseline comparison at full size"><img class="figure-img" src="static/img/qualitative.jpg" alt="Visual comparison of reconstructed assemblies using RPF, AssemblyDyno, AssemblyGS with FoundationPose and full AssemblyGS" loading="lazy"></a>
+        </div>
+        <div class="content has-text-justified" style="margin-top:.75rem">
+          <p><strong>Figure 4. Visual comparison on Assembly-20.</strong>
+            The leftmost column shows the individual Gaussian parts. RPF and AssemblyDyno produce point-cloud assemblies,
+            while the AssemblyGS variant using FoundationPose and full AssemblyGS are rendered with 3D Gaussian Splatting, alongside their corresponding
+            ground truth. The numbers at the bottom right of each result indicate correctly assembled parts out of the total.</p>
+        </div>
+
+        <h4 class="title is-5 sub-title">3D part assembly reconstruction</h4>
+        <div class="figure-block">
+          <a href="static/img/assembly_results.jpg" target="_blank" rel="noopener" aria-label="Open the assembly reconstruction results at full size"><img class="figure-img" src="static/img/assembly_results.jpg" alt="Progressive assembly of an earbud case, event camera, stapler and ring box, with recovered part motions and novel views" loading="lazy"></a>
+        </div>
+        <div class="content has-text-justified" style="margin-top:.75rem">
+          <p><strong>Figure 5. 3D part assembly reconstruction.</strong>
+            Real-world examples (top two rows) and synthetic examples (bottom two rows) show the input demonstration frames,
+            estimated part poses and motions, and intermediate reconstructions. Green arrows indicate the recovered assembly
+            motions; the rightmost column shows novel views of each fully assembled object.</p>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ BibTeX ============ -->
+<section class="section" id="BibTeX">
+  <div class="container is-max-desktop content">
+    <h2 class="title">BibTeX</h2>
+    <!-- Manuscript citation; author names follow the existing project page pending a public version. -->
+    <pre class="bibtex"><code>@misc{assemblygs,
+  title     = {Reconstructing High-Fidelity 3D Part Assemblies via Gaussian Splatting},
+  author    = {Wenhao Li and Zixuan Chen and Jianhuang Lai and Xiaohua Xie},
+  note      = {Manuscript}
+}</code></pre>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container">
+    <div class="columns is-centered">
+      <div class="column is-8">
+        <div class="content has-text-centered">
+          <p>This website is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative
+            Commons Attribution-ShareAlike 4.0 International License</a>.
+            The template is borrowed from <a href="https://github.com/nerfies/nerfies.github.io">Nerfies</a>.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+// ---- real-world samples: web/static/real/<name>/meta.json (scripts/render_real_web.py) ----
+const REAL = ['ecam', 'train', 'rc', 'earbuds'];
+const metas = {};
+let realRequestId = 0;
+async function showReal(name) {
+  const requestId = ++realRequestId;
+  const sample = document.getElementById('real-sample');
+  const status = document.getElementById('real-status');
+  const keys = document.getElementById('real-keys');
+  const video = document.getElementById('real-orbit');
+  document.querySelectorAll('#real-tabs li').forEach((li) => li.classList.toggle('is-active', li.dataset.name === name));
+  sample.setAttribute('aria-busy', 'true');
+  status.textContent = 'Loading demonstration…';
+  status.hidden = false;
+  keys.innerHTML = '';
+  video.pause();
+  video.removeAttribute('src');
+  video.load();
+  video.hidden = true;
+  try {
+    let m = metas[name];
+    if (!m) {
+      const response = await fetch(`static/real/${name}/meta.json`);
+      if (!response.ok) throw new Error(`Could not load ${name}: ${response.status}`);
+      m = await response.json();
+      metas[name] = m;
+    }
+    // A previous tab's response may finish later; only the latest selection can render.
+    if (requestId !== realRequestId) return;
+    keys.innerHTML = m.steps.map((st, i) =>
+      `<div class="key-step"><p class="cap"><b>${i + 1}</b>${st.caption}</p>
+         <div class="key-row">${st.keys.map((k) => `<img src="static/real/${name}/${k}" alt="${st.caption}, key frame" loading="lazy">`).join('')}</div></div>`).join('');
+    video.src = `static/real/${name}/${m.orbit}`;
+    video.hidden = false;
+    status.hidden = true;
+    video.play().catch(() => {});
+  } catch (error) {
+    if (requestId !== realRequestId) return;
+    status.textContent = 'Could not load this demonstration. Select a tab to try again.';
+  } finally {
+    if (requestId === realRequestId) sample.setAttribute('aria-busy', 'false');
+  }
+}
+const TITLES = { earbuds: 'Earbud case', train: 'Toy train', rc: 'Remote control', ecam: 'Event camera' };
+document.getElementById('real-tabs').innerHTML = REAL.map((n) => `<li data-name="${n}"><a>${TITLES[n]}</a></li>`).join('');
+document.querySelectorAll('#real-tabs li').forEach((li) => li.onclick = () => showReal(li.dataset.name));
+showReal(REAL[0]);
+
+// autoplay demos play only while on screen; the project video uses its native playback controls
+const io = new IntersectionObserver((es) => es.forEach((e) => {
+  e.isIntersecting ? e.target.play().catch(() => {}) : e.target.pause();
+}), { threshold: 0.3 });
+document.querySelectorAll('video[autoplay]').forEach((v) => io.observe(v));
+
+// ---- Assembly-20 gallery: web/static/dataset/index.json ----
+(async () => {
+  const items = await (await fetch('static/dataset/index.json')).json();
+  const interactive = new Set([...document.querySelectorAll('#asm-select option')].map((o) => o.value));
+  const k = (n, cls, label) => n ? `<span class="${cls}">${n} ${label}</span>` : '';
+  document.getElementById('dataset-grid').innerHTML = items.map((it) => `
+    <div class="ds-card">
+      <div class="thumb"><img src="static/dataset/${it.image}" alt="${it.name}, assembled" loading="lazy"></div>
+      ${interactive.has(it.id) ? `<a class="tag is-info is-light badge3d" data-asm="${it.id}" title="Open in the interactive demo">3D</a>` : ''}
+      <div class="body">
+        <div class="name">${it.name}</div>
+        <div class="meta">${it.steps} operations</div>
+        <div class="kinds">${k(it.translate, 'k-t', 'trans.')}${k(it.screw, 'k-s', 'screw')}${k(it.revolute, 'k-r', 'revolute')}</div>
+      </div>
+    </div>`).join('');
+  document.querySelectorAll('.badge3d').forEach((b) => b.onclick = () => {
+    asmSelect.value = b.dataset.asm;
+    asmSelect.dispatchEvent(new Event('change'));
+    document.getElementById('interactive').scrollIntoView({ behavior: 'smooth' });
+  });
+})();
+
+// ---- interactive viewer: loads on request, nothing heavy until the reader asks ----
+const frame = document.getElementById('frame');
+const asmSelect = document.getElementById('asm-select');
+let loaded = false;
+function loadViewer() {
+  loaded = true;
+  frame.innerHTML = `<iframe src="demo.html?embed&a=${encodeURIComponent(asmSelect.value)}" title="Interactive 3D viewer" allow="fullscreen"></iframe>`;
+}
+const start = document.getElementById('start');
+const showPreview = () => {
+  start.style.backgroundImage = `url("demo/${asmSelect.value}/preview.jpg")`;
+  document.getElementById('start-mb').textContent = `about ${asmSelect.selectedOptions[0].dataset.mb} MB · WebGL 2`;
+};
+showPreview();
+start.onclick = loadViewer;
+asmSelect.onchange = () => { if (loaded) loadViewer(); else showPreview(); };
+
+</script>
+</body>
+</html>

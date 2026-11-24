@@ -1,0 +1,222 @@
+[
+ {
+  "id": "111230m_1bb2f7a1",
+  "name": "Bolted plates",
+  "image": "111230m_1bb2f7a1.webp",
+  "parts": 10,
+  "steps": 9,
+  "translate": 5,
+  "screw": 4,
+  "revolute": 0,
+  "edges": 8
+ },
+ {
+  "id": "122423m_9ab69fbb",
+  "name": "Cam toy",
+  "image": "122423m_9ab69fbb.webp",
+  "parts": 10,
+  "steps": 9,
+  "translate": 5,
+  "screw": 4,
+  "revolute": 0,
+  "edges": 9
+ },
+ {
+  "id": "140103m_0c15117b",
+  "name": "Computer mouse",
+  "image": "140103m_0c15117b.webp",
+  "parts": 5,
+  "steps": 4,
+  "translate": 4,
+  "screw": 0,
+  "revolute": 0,
+  "edges": 6
+ },
+ {
+  "id": "143768m_2939716e",
+  "name": "Scissors",
+  "image": "143768m_2939716e.webp",
+  "parts": 4,
+  "steps": 3,
+  "translate": 2,
+  "screw": 1,
+  "revolute": 0,
+  "edges": 2
+ },
+ {
+  "id": "146102m_93e433ac",
+  "name": "Caster wheel",
+  "image": "146102m_93e433ac.webp",
+  "parts": 5,
+  "steps": 4,
+  "translate": 4,
+  "screw": 0,
+  "revolute": 0,
+  "edges": 2
+ },
+ {
+  "id": "20755m_4b5e61bf",
+  "name": "Sippy cup",
+  "image": "20755m_4b5e61bf.webp",
+  "parts": 6,
+  "steps": 5,
+  "translate": 5,
+  "screw": 0,
+  "revolute": 0,
+  "edges": 6
+ },
+ {
+  "id": "21008m_a3fec63b",
+  "name": "Bike stem",
+  "image": "21008m_a3fec63b.webp",
+  "parts": 8,
+  "steps": 7,
+  "translate": 2,
+  "screw": 5,
+  "revolute": 0,
+  "edges": 4
+ },
+ {
+  "id": "22040m_6461a147",
+  "name": "Shaft bracket",
+  "image": "22040m_6461a147.webp",
+  "parts": 8,
+  "steps": 7,
+  "translate": 7,
+  "screw": 0,
+  "revolute": 0,
+  "edges": 6
+ },
+ {
+  "id": "24472m_5019aefa",
+  "name": "Clamp screw",
+  "image": "24472m_5019aefa.webp",
+  "parts": 5,
+  "steps": 4,
+  "translate": 3,
+  "screw": 1,
+  "revolute": 0,
+  "edges": 2
+ },
+ {
+  "id": "30639m_6ac3cf66",
+  "name": "Globe valve",
+  "image": "30639m_6ac3cf66.webp",
+  "parts": 8,
+  "steps": 7,
+  "translate": 7,
+  "screw": 0,
+  "revolute": 0,
+  "edges": 8
+ },
+ {
+  "id": "32543m_2d9adbfe",
+  "name": "3D-printer extruder",
+  "image": "32543m_2d9adbfe.webp",
+  "parts": 10,
+  "steps": 9,
+  "translate": 9,
+  "screw": 0,
+  "revolute": 0,
+  "edges": 8
+ },
+ {
+  "id": "41608m_fb3b91be",
+  "name": "Ball-point pen",
+  "image": "41608m_fb3b91be.webp",
+  "parts": 6,
+  "steps": 5,
+  "translate": 5,
+  "screw": 0,
+  "revolute": 0,
+  "edges": 4
+ },
+ {
+  "id": "49404m_6c3e5e5d",
+  "name": "Pillow block",
+  "image": "49404m_6c3e5e5d.webp",
+  "parts": 9,
+  "steps": 8,
+  "translate": 4,
+  "screw": 4,
+  "revolute": 0,
+  "edges": 15
+ },
+ {
+  "id": "49695m_26fc1474",
+  "name": "Phone stand",
+  "image": "49695m_26fc1474.webp",
+  "parts": 8,
+  "steps": 7,
+  "translate": 7,
+  "screw": 0,
+  "revolute": 0,
+  "edges": 6
+ },
+ {
+  "id": "52222m_4431cc16",
+  "name": "Ring box",
+  "image": "52222m_4431cc16.webp",
+  "parts": 4,
+  "steps": 4,
+  "translate": 3,
+  "screw": 0,
+  "revolute": 1,
+  "edges": 3
+ },
+ {
+  "id": "52576m_6a9d504d",
+  "name": "Headphones",
+  "image": "52576m_6a9d504d.webp",
+  "parts": 13,
+  "steps": 12,
+  "translate": 12,
+  "screw": 0,
+  "revolute": 0,
+  "edges": 10
+ },
+ {
+  "id": "65235m_1690b2bf",
+  "name": "Finger-joint box",
+  "image": "65235m_1690b2bf.webp",
+  "parts": 6,
+  "steps": 5,
+  "translate": 5,
+  "screw": 0,
+  "revolute": 0,
+  "edges": 6
+ },
+ {
+  "id": "grinderm_ecff3b26",
+  "name": "Coffee grinder",
+  "image": "grinderm_ecff3b26.webp",
+  "parts": 16,
+  "steps": 15,
+  "translate": 9,
+  "screw": 6,
+  "revolute": 0,
+  "edges": 28
+ },
+ {
+  "id": "lighterm_32294179",
+  "name": "Lighter",
+  "image": "lighterm_32294179.webp",
+  "parts": 5,
+  "steps": 5,
+  "translate": 4,
+  "screw": 0,
+  "revolute": 1,
+  "edges": 5
+ },
+ {
+  "id": "stapler2m_f4a5e858",
+  "name": "Stapler",
+  "image": "stapler2m_f4a5e858.webp",
+  "parts": 6,
+  "steps": 6,
+  "translate": 5,
+  "screw": 0,
+  "revolute": 1,
+  "edges": 6
+ }
+]

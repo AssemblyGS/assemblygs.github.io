@@ -1,0 +1,22 @@
+{
+ "title": "Event camera",
+ "orbit": "orbit.mp4",
+ "steps": [
+  {
+   "caption": "Screw the lens into the body",
+   "keys": [
+    "key_0_0.jpg",
+    "key_0_1.jpg",
+    "key_0_2.jpg"
+   ]
+  },
+  {
+   "caption": "Screw the tripod into the body",
+   "keys": [
+    "key_1_0.jpg",
+    "key_1_1.jpg",
+    "key_1_2.jpg"
+   ]
+  }
+ ]
+}
